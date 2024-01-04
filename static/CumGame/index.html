@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html ng-app="app" lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="index.css">
+    <script src="deps/reconnecting-websocket.min.js"></script>
+    <script src="deps/countUp.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/buttplug@3.2.1/dist/web/buttplug.js"></script>
+    <script>
+        const devices = []
+        const vibAll = (data) => {
+            for (var i in devices) {
+                var device = devices[i];
+                device.vibrate(data)
+            }
+        }
+        const start = async () => {
+            var client = new buttplug.ButtplugClient("Intiface Central Test");
+            let connector = new buttplug.ButtplugBrowserWebsocketClientConnector("ws://localhost:12345/buttplug");
+            client.addListener('deviceadded', async (device) => {
+                console.log("Device!")
+                devices.push(device)
+            })
+            await client.connect(connector);
+            await client.startScanning();
+        }
+        start()
+
+        // client.addListener('deviceadded', async (device) => {
+        //     await client.connect(connector);
+        // })
+        // client.startScanning();
+    </script>
+    <style>
+        #fcUnderline {
+            background: rgb(255, 14, 154);
+            box-shadow: 0 0 10px rgb(255, 14, 154);
+        }
+    </style>
+    <title>In game Small</title>
+</head>
+
+<body ng-controller="AppController">
+    <div class="base" id="base">
+        <div class="pp"><span id="pp">0</span>pp</div>
+        <div class="progress">
+            <div id="progress"></div>
+        </div>
+        <div class="hitsLine">
+            <div class="hits">
+                <div id="hun">{{hits[300]}}</div>
+                <div class="hitsUnderline" id="fcUnderline"></div>
+            </div>
+            <div class="hits">
+                <div id="hun">{{hits[100]}}</div>
+                <div class="hitsUnderline" id="hunUnderline"></div>
+            </div>
+            <div class="hits">
+                <div id="fiv">{{hits[50]}}</div>
+                <div class="hitsUnderline" id="fivUnderline"></div>
+            </div>
+            <div class="hits">
+                <div id="miss">{{hits[0]}}</div>
+                <div class="hitsUnderline" id="missUnderline"></div>
+            </div>
+        </div>
+    </div>
+    <div class="ifFcpp"><span id="ifFcpp">0</span>pp</div>
+    <!-- <script src="index.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.3/angular.min.js"
+        integrity="sha512-KZmyTq3PLx9EZl0RHShHQuXtrvdJ+m35tuOiwlcZfs/rE7NZv29ygNA8SFCkMXTnYZQK2OX0Gm2qKGfvWEtRXA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        let socket = new ReconnectingWebSocket("ws://127.0.0.1:24050/ws");
+        socket.onopen = () => console.log("Successfully Connected");
+        socket.onclose = event => {
+            console.log("Socket Closed Connection: ", event);
+            socket.send("Client Closed!");
+        };
+        socket.onerror = error => console.log("Socket Error: ", error);
+        var app = angular.module('app', [])
+        app.controller("AppController", ($scope) => {
+            $scope.hits = []
+            $scope.hits[300] = 0
+            $scope.hits[100] = 0
+            $scope.hits[50] = 0
+            $scope.hits[0] = 0
+            $scope.lastHits = angular.copy($scope.hits)
+            console.log({ socket })
+            let tempState;
+            let seek;
+            let fullTime;
+            let onepart;
+
+            socket.onmessage = event => {
+                let data = JSON.parse(event.data)
+                if (data.menu.state !== tempState) {
+                    tempState = data.menu.state
+                }
+                var hits = [{
+                    points: 300,
+                    mult: 0
+                }, {
+                    points: 100,
+                    mult: 0.1
+                }, {
+                    points: 50,
+                    mult: 0.5
+                }, {
+                    points: 0,
+                    mult: 1
+                }]
+                for (var hit of hits) {
+                    if (data.gameplay.hits[hit.points] > 0) {
+                        $scope.hits[hit.points] = data.gameplay.hits[hit.points]
+                        if ($scope.lastHits[hit.points] != $scope.hits[hit.points]) {
+                            $scope.lastHits[hit.points] = angular.copy($scope.hits[hit.points])
+                            vibAll([1 * hit.mult, 1 * hit.mult])
+                            setTimeout(() => {
+                                vibAll([0, 0])
+                            }, 200)
+                        }
+                    }
+                }
+                // if (data.gameplay.hits[100] > 0) {
+                //     $scope.hits[100] = data.gameplay.hits[100]
+                // }
+                // if (data.gameplay.hits[50] > 0) {
+                //     $scope.hits[50] = data.gameplay.hits[50]
+                // }
+                // if (data.gameplay.hits[0] > 0) {
+                //     $scope.hits[0] = data.gameplay.hits[0]
+                //     // vibAll([1,1])
+                //     vibAll([0, 0])
+                // }
+                $scope.$apply()
+            }
+        })
+    </script>
+</body>
+
+</html>
