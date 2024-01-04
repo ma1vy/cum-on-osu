@@ -1,3 +1,7 @@
+# Cum on Osu!
+
+Why not be able to use your sex toys with osu? this projects connects to intiface central to control any type of remote toy that is compatible with it!
+
 # How to use ?
 
 Clone/Download this repository.
